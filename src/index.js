@@ -27,7 +27,7 @@ async function onSearch(e) {
   e.preventDefault();
   clearImageMarkup();
   apiService.query = e.currentTarget.elements.searchQuery.value;
-  apiService.resetPage();
+  apiService.resetPage(refs.btnLoadMore.classList.add('is-hidden'));
   const data = await apiService.fetchImages()
   page = 2;
   const totalPages = Math.ceil(data.totalHits / 40);
