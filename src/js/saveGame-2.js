@@ -23,26 +23,28 @@ refs.btnLoadMore.addEventListener('click', onLoadMore);
 window.addEventListener('scroll', onScroll);
 refs.btnToTheTop.addEventListener('click', onTopBtn);
 
-async function onSearch(e) { 
+function onSearch(e) { 
   e.preventDefault();
+  page += 1;
   clearImageMarkup();
+  
   apiService.query = e.currentTarget.elements.searchQuery.value;
   apiService.resetPage();
-  const data = await apiService.fetchImages()
-  page = 2;
-  const totalPages = Math.ceil(data.totalHits / 40);
-  if (data.totalHits === 0) {
-    alertNoImagesFound();
-  };
-  if (data.totalHits !== 0) {
-    refs.btnLoadMore.classList.remove('is-hidden');
-    alertImagesFound(data);
-  };
-  if (page > totalPages && data.totalHits !== 0) {
-    refs.btnLoadMore.classList.add('is-hidden');
-    alertEndOfSearch();
-  }
-  appendImagesMarkup(data);
+  apiService.fetchImages().then(data => { 
+    const totalPages = Math.ceil(data.totalHits / 40);
+    if (data.totalHits === 0) { 
+      alertNoImagesFound();
+    };
+    if (data.totalHits !== 0) {
+      refs.btnLoadMore.classList.remove('is-hidden');
+          alertImagesFound(data);
+    };
+    if (page > totalPages && data.totalHits !== 0) {
+      refs.btnLoadMore.classList.add('is-hidden');
+      alertEndOfSearch();
+    }
+    appendImagesMarkup(data);
+  });
 };
 
 async function onLoadMore() {
@@ -55,6 +57,24 @@ async function onLoadMore() {
   }
   appendImagesMarkup(data);
 };
+
+
+
+
+// function onLoadMore() {
+//   page += 1;
+
+//   apiService.fetchImages().then(data => {
+//     const totalPages = Math.ceil(data.totalHits / 40);
+
+//     if (page > totalPages) {
+//       refs.btnLoadMore.classList.add('is-hidden');
+//       // console.log('the end');
+//       alertEndOfSearch();
+//     }
+//     appendImagesMarkup(data);
+// })
+// };
 
 function appendImagesMarkup(data) {
   refs.gallery.insertAdjacentHTML('beforeend', galleryMarkupTpl(data.hits));
