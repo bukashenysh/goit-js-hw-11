@@ -2,12 +2,10 @@ import './sass/main.scss';
 import galleryMarkupTpl from './templates/galleryMarkup.hbs';
 import SimpleLightbox from 'simplelightbox';
 import 'simplelightbox/dist/simple-lightbox.min.css';
+import ApiService from './js/serviceApi';
+import { Notify } from 'notiflix/build/notiflix-notify-aio';
 
-
-
-const API_KEY = '25359275-764cc4a5f322ad48333636f40';
-const BASE_URL = 'https://pixabay.com/api/'
-let chto = null
+let page = 1;
 
 const refs = {
   form: document.querySelector('.search-form'),
@@ -16,37 +14,89 @@ const refs = {
   btnToTheTop: document.querySelector('.btn-to-top')
 }
 
-// refs.form.addEventListener('input', onInputSearch);
-refs.form.addEventListener('submit', onSubmit);
-// refs.btnLoadMore.addEventListener('click', fetchedImage)
+const apiService = new ApiService();
+const simple = new SimpleLightbox('.gallery a');
 
 
-function onSubmit(e) { 
+refs.form.addEventListener('submit', onSearch);
+refs.btnLoadMore.addEventListener('click', onLoadMore);
+window.addEventListener('scroll', onScroll);
+refs.btnToTheTop.addEventListener('click', onTopBtn);
+
+function onSearch(e) { 
   e.preventDefault();
-  console.log(e.target.searchQuery.value);
-  fetchedImages(e.target.searchQuery.value);
-}
+  page += 1;
+  clearImageMarkup();
+  
+  apiService.query = e.currentTarget.elements.searchQuery.value;
+  apiService.resetPage();
+  apiService.fetchImages().then(data => { 
+    const totalPages = Math.ceil(data.totalHits / 40);
+    if (data.totalHits === 0) { 
+      alertNoImagesFound();
+    };
+    if (data.totalHits !== 0) {
+      refs.btnLoadMore.classList.remove('is-hidden');
+          alertImagesFound(data);
+    };
+    if (page > totalPages && data.totalHits !== 0) {
+      refs.btnLoadMore.classList.add('is-hidden');
+      alertEndOfSearch();
+    }
+    appendImagesMarkup(data);
+  });
+};
 
-function fetchedImages(value) {
-  chto += 1;
-  // console.log(fetch(`https://pixabay.com/api/?key=${API_KEY}&q=${value}&image_type=photo&per_page=40`).then(res => { return res.json() }).then(img => img.hits[2]).then(img => refs.gallery.insertAdjacentHTML('beforeend', oneImgTpl(img))))
-  return fetch(`${BASE_URL}?key=${API_KEY}&q=${value}&image_type=photo&page=${chto}&per_page=12&orientation=horizontal&safesearch=true`)
-    .then(res => { return res.json() })
-    .then(img => {
-      new SimpleLightbox('.gallery a').refresh()
-      
-      refs.btnLoadMore.classList.remove('is-hidden')
+function onLoadMore() {
+  page += 1;
 
-      if (chto >= 2) {
-        refs.btnToTheTop.classList.add('btn-to-top--visible')
-       }
+  apiService.fetchImages().then(data => {
+    const totalPages = Math.ceil(data.totalHits / 40);
 
+    if (page > totalPages) {
+      refs.btnLoadMore.classList.add('is-hidden');
+      // console.log('the end');
+      alertEndOfSearch();
+    }
+    appendImagesMarkup(data);
+})
+};
 
-      if (img.total === 0) {
-        console.log('change this fucking search')
-       }
+function appendImagesMarkup(data) {
+  refs.gallery.insertAdjacentHTML('beforeend', galleryMarkupTpl(data.hits));
+  simple.refresh();
+};
 
-    return refs.gallery.insertAdjacentHTML('beforeend', galleryMarkupTpl(img.hits))
+function clearImageMarkup(data) { 
+  refs.gallery.innerHTML = '';
+};
+
+function onScroll() {
+  const scrolled = window.pageYOffset
+  const coords = document.documentElement.clientHeight
+
+  if (scrolled > coords) {
+    refs.btnToTheTop.classList.add('btn-to-top--visible')
   }
-  )
-}
+  if (scrolled < coords) {
+    refs.btnToTheTop.classList.remove('btn-to-top--visible')
+  }
+};
+
+function onTopBtn() {
+  if (window.pageYOffset > 0) {
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+};
+
+function alertImagesFound(data) {
+  Notify.success(`Hooray! We found ${data.totalHits} images.`)
+};
+
+function alertNoImagesFound() {
+  Notify.failure('Sorry, there are no images matching your search query. Please try again.')
+};
+
+function alertEndOfSearch() {
+  Notify.info("We're sorry, but you've reached the end of search results.")
+};
